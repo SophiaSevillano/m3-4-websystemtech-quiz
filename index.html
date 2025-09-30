@@ -100,6 +100,13 @@
             <!-- Controls -->
             <div class="mt-8 flex justify-between">
                 <!-- Next button is now blue -->
+                <!-- Back button is gray -->
+                <button id="back-button" 
+                        onclick="previousQuestion()" 
+                        class="px-6 py-3 bg-gray-400 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed" 
+                        disabled>
+                    Back
+                </button>
                 <button id="next-button" 
                         onclick="nextQuestion()" 
                         class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed" 
@@ -282,26 +289,54 @@
 
             const currentQ = questions[currentQuestionIndex];
             
-            // Reset elements
             const optionsContainer = document.getElementById('options-container');
+            const backButton = document.getElementById('back-button');
             const nextButton = document.getElementById('next-button');
             const feedback = document.getElementById('feedback');
 
             document.getElementById('question-text').textContent = currentQ.question;
             optionsContainer.innerHTML = '';
             feedback.innerHTML = '';
-            nextButton.disabled = true;
-            nextButton.textContent = 'Next Question';
 
-            currentQ.options.forEach((option, index) => {
+            // --- Control Button Logic for Back and Next ---
+            // Disable 'Back' on the first question
+            backButton.disabled = (currentQuestionIndex === 0);
+            
+            const isAnswered = currentQ.userAnswer !== null;
+            // Next button is disabled if not answered AND not the last question (which defaults to 'Finish Quiz')
+            nextButton.disabled = !isAnswered && (currentQuestionIndex < totalQuestions - 1);
+            nextButton.textContent = (currentQuestionIndex === totalQuestions - 1) ? 'Finish Quiz' : 'Next Question';
+
+            // --- Render Options ---
+            currentQ.options.forEach(option => {
                 const button = document.createElement('button');
                 button.textContent = option;
-                // Options button hover state is now blue
                 button.className = 'option-button w-full text-left p-4 bg-gray-50 text-gray-700 font-medium border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:text-blue-600 transition duration-150';
                 button.setAttribute('data-answer', option);
-                button.onclick = () => answerQuestion(option, button);
+                
+                if (isAnswered) {
+                    // Review mode: disable buttons and highlight answers
+                    button.classList.add('disabled');
+                    if (option === currentQ.answer) {
+                        button.classList.add('correct');
+                    } else if (option === currentQ.userAnswer && !currentQ.isCorrect) {
+                        button.classList.add('incorrect');
+                    }
+                } else {
+                    // Unanswered mode: enable click handler
+                    button.onclick = () => answerQuestion(option, button);
+                }
+
                 optionsContainer.appendChild(button);
             });
+            
+            // Show review feedback if answered
+            if (isAnswered) {
+                feedback.innerHTML = `<p class="${currentQ.isCorrect ? 'correct-feedback' : 'incorrect-feedback'}">
+                    ${currentQ.isCorrect ? '✅ You answered this correctly.' : '❌ You answered this incorrectly. The correct answer was: **' + currentQ.answer + '**.'}
+                </p>`;
+            }
+
             updateScoreDisplay();
         }
 
@@ -311,11 +346,14 @@
             const feedbackElement = document.getElementById('feedback');
             const optionButtons = document.querySelectorAll('.option-button');
             
+            // Store results in the question object (STATEFUL UPDATE)
+            currentQ.userAnswer = selectedOption;
+            currentQ.isCorrect = correct;
+
             // Disable all buttons
             optionButtons.forEach(btn => btn.classList.add('disabled'));
 
             if (correct) {
-                score++;
                 selectedButton.classList.add('correct');
                 feedbackElement.innerHTML = `<p class="correct-feedback">✅ Correct! Great job.</p>`;
             } else {
@@ -337,6 +375,13 @@
             updateScoreDisplay();
         }
 
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayQuestion();
+            }
+        }
+        
         function nextQuestion() {
             currentQuestionIndex++;
             displayQuestion();
