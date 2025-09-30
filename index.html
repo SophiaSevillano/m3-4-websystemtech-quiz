@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module 3 & 4 Quiz Web System Technologies</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue/gray background */
+        }
+        .quiz-container {
+            max-width: 640px;
+        }
+        .option-button {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        /* Custom styles for disabled/answered buttons */
+        .option-button.correct {
+            background-color: #34d399 !important; /* Tailwind green-400 (Success) */
+            color: #10b981 !important; 
+            border-color: #059669 !important;
+            animation: pulse-correct 0.5s 1;
+        }
+        .option-button.incorrect {
+            background-color: #f87171 !important; /* Tailwind red-400 (Failure) */
+            color: #b91c1c !important; 
+            border-color: #ef4444 !important;
+            animation: shake 0.5s 1;
+        }
+        .option-button:not(.disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .option-button.disabled {
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        #feedback p {
+            padding: 8px 16px;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+        .correct-feedback {
+            background-color: #d1fae5; /* Light green */
+            color: #059669; /* Dark green text */
+        }
+        .incorrect-feedback {
+            background-color: #fee2e2; /* Light red */
+            color: #dc2626; /* Dark red text */
+        }
+        @keyframes pulse-correct {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="quiz-app" class="quiz-container w-full bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-gray-100">
+
+        <!-- Header -->
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">Module 3 & 4 Quiz Web System Technologies</h1>
+            <!-- Score tracker is now blue -->
+            <div id="score-tracker" class="mt-2 text-center text-xl font-semibold text-blue-600">
+                Score: 0 / 0
+            </div>
+        </header>
+
+        <!-- Quiz Area -->
+        <div id="quiz-area">
+            
+            <!-- Question Text -->
+            <p id="question-text" class="text-xl font-semibold text-gray-700 mb-6 min-h-20 flex items-center justify-center text-center">
+                Loading question...
+            </p>
+
+            <!-- Options Container -->
+            <div id="options-container" class="space-y-4">
+                <!-- Options will be injected here by JavaScript -->
+            </div>
+            
+            <!-- Feedback -->
+            <div id="feedback" class="min-h-12">
+                <!-- Feedback message will be shown here -->
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-8 flex justify-between">
+                <!-- Next button is now blue -->
+                <button id="next-button" 
+                        onclick="nextQuestion()" 
+                        class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed" 
+                        disabled>
+                    Next Question
+                </button>
+                <button id="restart-button" 
+                        onclick="restartQuiz()" 
+                        class="px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 hidden">
+                    Restart Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div id="results-area" class="text-center p-8 hidden">
+            <!-- Results text is now blue -->
+            <h2 class="text-4xl font-extrabold text-blue-600 mb-4">Quiz Complete!</h2>
+            <p class="text-2xl text-gray-700 mb-6">Your Final Score:</p>
+            <!-- Final score number is now a darker blue -->
+            <p id="final-score" class="text-6xl font-black text-blue-700">0 / 0</p>
+            <!-- Try Again button is now blue -->
+            <button onclick="restartQuiz()" class="mt-8 px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg shadow-xl hover:bg-blue-700 transition duration-150">
+                Try Again
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Quiz Data based on the conversation
+        const quizData = [
+            {
+                question: "The default controller can be set from which configuration file:",
+                options: ["Config", "Database", "Routes", "autoload"],
+                answer: "Routes"
+            },
+            {
+                question: "A Controller is a class file that can be associated with a URI.",
+                options: ["True", "False"],
+                answer: "True"
+            },
+            {
+                question: "CodeIgniter can load a default controller if only your site root URL is requested.",
+                options: ["False", "True"],
+                answer: "True"
+            },
+            {
+                question: "Controllers are the heart of your application, as they determine how HTTP requests should be handled.",
+                options: ["True", "False"],
+                answer: "True"
+            },
+            {
+                question: "A view is simply a web page, or a page fragment (header, footer) and can be embedded within other views.",
+                options: ["True", "False"],
+                answer: "True"
+            },
+            {
+                question: "In an MVC framework, the Controller acts as the orchestrator, so it is responsible for fetching a particular view.",
+                options: ["False", "True"],
+                answer: "True"
+            },
+            {
+                question: "CodeIgniter will handle multiple calls to $this->load->view() from within a controller.",
+                options: ["False", "True"],
+                answer: "True"
+            },
+            {
+                question: "The application/config/routes.php file determines which controller is called by default",
+                options: ["True", "False"],
+                answer: "True"
+            },
+            {
+                question: "Class names must start with an uppercase letter.",
+                options: ["False", "True"],
+                answer: "True"
+            },
+            {
+                question: "Views are called directly and must be loaded by a controller.",
+                options: ["False", "True"],
+                answer: "False"
+            },
+            {
+                question: "What does the save() method do in a Model?",
+                options: ["Only inserts data into the database", "Only updates data in the database", "Inserts or updates data based on whether the record exists", "Deletes a record if it exists"],
+                answer: "Inserts or updates data based on whether the record exists"
+            },
+            {
+                question: "What is the purpose of the returnType property in a Model?",
+                options: ["Defines the format for errors", "Specifies the data type of the primary key", "Configures the database connection", "Specifies the format of returned data (e.g., array, object)"],
+                answer: "Specifies the format of returned data (e.g., array, object)"
+            },
+            {
+                question: "Which property should be defined in a Model to specify the primary key of the table?",
+                options: ["protected $id", "protected $key", "protected $identifier", "protected $primaryKey"],
+                answer: "protected $primaryKey"
+            },
+            {
+                question: "Where are Model files typically stored in a CodeIgniter application?",
+                options: ["app/Controllers", "app/Views", "app/Config", "app/Models"],
+                answer: "app/Models"
+            },
+            {
+                question: "How can you specify a table in a Model to interact with?",
+                options: ["setTable()", "useTable()", "table()", "protected $table property"],
+                answer: "protected $table property"
+            },
+            {
+                question: "What does the esc() function do in a view?",
+                options: ["Exits the script", "Includes a JavaScript file", "Creates a new line in the HTML", "Escapes HTML characters to prevent XSS attacks"],
+                answer: "Escapes HTML characters to prevent XSS attacks"
+            },
+            {
+                question: "How can you pass multiple pieces of data to a view?",
+                options: ["Using JSON", "Using multiple arguments", "Using a string", "Using an associative array"],
+                answer: "Using an associative array"
+            },
+            {
+                question: "How can you access data passed from the controller in a view file?",
+                options: ["Using $this->data", "Using an array", "Using objects", "As variables"],
+                answer: "As variables"
+            },
+            {
+                question: "What is the file extension typically used for view files in CodeIgniter?",
+                options: [".html", ".xml", ".view", ".php"],
+                answer: ".php"
+            },
+            {
+                question: "Which method is used to send data from a view back to the controller?",
+                options: ["view->data()", "transfer_data()", "return_data()", "Data is not sent back; it’s typically handled via forms"],
+                answer: "Data is not sent back; it’s typically handled via forms"
+            }
+        ];
+
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const totalQuestions = quizData.length;
+
+        // Utility function to shuffle an array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function initializeQuiz() {
+            // 1. Reset state
+            score = 0;
+            currentQuestionIndex = 0;
+            
+            // 2. Deep copy quizData and shuffle it
+            questions = JSON.parse(JSON.stringify(quizData));
+            shuffleArray(questions);
+
+            // 3. Shuffle options for each question
+            questions.forEach(q => shuffleArray(q.options));
+
+            // 4. Update UI visibility
+            document.getElementById('quiz-area').classList.remove('hidden');
+            document.getElementById('results-area').classList.add('hidden');
+            document.getElementById('restart-button').classList.add('hidden');
+
+            // 5. Start the first question
+            updateScoreDisplay();
+            displayQuestion();
+        }
+
+        function updateScoreDisplay() {
+            // Updated to show score / totalQuestions (e.g., "5 / 20")
+            document.getElementById('score-tracker').textContent = `Score: ${score} / ${totalQuestions}`;
+        }
+
+        function displayQuestion() {
+            if (currentQuestionIndex >= totalQuestions) {
+                showResults();
+                return;
+            }
+
+            const currentQ = questions[currentQuestionIndex];
+            
+            // Reset elements
+            const optionsContainer = document.getElementById('options-container');
+            const nextButton = document.getElementById('next-button');
+            const feedback = document.getElementById('feedback');
+
+            document.getElementById('question-text').textContent = currentQ.question;
+            optionsContainer.innerHTML = '';
+            feedback.innerHTML = '';
+            nextButton.disabled = true;
+            nextButton.textContent = 'Next Question';
+
+            currentQ.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                // Options button hover state is now blue
+                button.className = 'option-button w-full text-left p-4 bg-gray-50 text-gray-700 font-medium border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:text-blue-600 transition duration-150';
+                button.setAttribute('data-answer', option);
+                button.onclick = () => answerQuestion(option, button);
+                optionsContainer.appendChild(button);
+            });
+            updateScoreDisplay();
+        }
+
+        function answerQuestion(selectedOption, selectedButton) {
+            const currentQ = questions[currentQuestionIndex];
+            const correct = (selectedOption === currentQ.answer);
+            const feedbackElement = document.getElementById('feedback');
+            const optionButtons = document.querySelectorAll('.option-button');
+            
+            // Disable all buttons
+            optionButtons.forEach(btn => btn.classList.add('disabled'));
+
+            if (correct) {
+                score++;
+                selectedButton.classList.add('correct');
+                feedbackElement.innerHTML = `<p class="correct-feedback">✅ Correct! Great job.</p>`;
+            } else {
+                selectedButton.classList.add('incorrect');
+                feedbackElement.innerHTML = `<p class="incorrect-feedback">❌ Incorrect. The correct answer was: **${currentQ.answer}**.</p>`;
+            }
+
+            // Highlight the correct answer if the selected answer was wrong
+            if (!correct) {
+                optionButtons.forEach(btn => {
+                    if (btn.getAttribute('data-answer') === currentQ.answer) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            // Enable next button
+            document.getElementById('next-button').disabled = false;
+            updateScoreDisplay();
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        function showResults() {
+            document.getElementById('quiz-area').classList.add('hidden');
+            document.getElementById('results-area').classList.remove('hidden');
+            document.getElementById('final-score').textContent = `${score} / ${totalQuestions}`;
+        }
+
+        function restartQuiz() {
+            initializeQuiz();
+        }
+
+        // Initialize the quiz when the page loads
+        window.onload = initializeQuiz;
+    </script>
+
+</body>
+</html>
