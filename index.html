@@ -24,21 +24,22 @@
             background-color: #34d399 !important; /* Tailwind green-400 (Success) */
             color: #10b981 !important; 
             border-color: #059669 !important;
-            animation: pulse-correct 0.5s 1;
+            animation: none; /* Disable shake/pulse for review mode */
         }
         .option-button.incorrect {
             background-color: #f87171 !important; /* Tailwind red-400 (Failure) */
             color: #b91c1c !important; 
             border-color: #ef4444 !important;
-            animation: shake 0.5s 1;
+            animation: none; /* Disable shake/pulse for review mode */
         }
         .option-button:not(.disabled):hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .option-button.disabled {
-            cursor: not-allowed;
+            cursor: default;
             pointer-events: none;
+            opacity: 0.8; /* Slight visual hint for disabled */
         }
         #feedback p {
             padding: 8px 16px;
@@ -54,6 +55,10 @@
             background-color: #fee2e2; /* Light red */
             color: #dc2626; /* Dark red text */
         }
+        /* Animation for immediate feedback */
+        .option-button:not(.disabled).correct { animation: pulse-correct 0.5s 1; }
+        .option-button:not(.disabled).incorrect { animation: shake 0.5s 1; }
+        
         @keyframes pulse-correct {
             0% { transform: scale(1); }
             50% { transform: scale(1.02); }
@@ -98,8 +103,8 @@
             </div>
 
             <!-- Controls -->
-            <div class="mt-8 flex justify-between">
-                <!-- Next button is now blue -->
+            <div class="mt-8 flex justify-center space-x-4">
+                
                 <!-- Back button is gray -->
                 <button id="back-button" 
                         onclick="previousQuestion()" 
@@ -107,12 +112,16 @@
                         disabled>
                     Back
                 </button>
+
+                <!-- Next button is blue -->
                 <button id="next-button" 
                         onclick="nextQuestion()" 
                         class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed" 
                         disabled>
                     Next Question
                 </button>
+                
+                <!-- Restart button remains hidden until end screen -->
                 <button id="restart-button" 
                         onclick="restartQuiz()" 
                         class="px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition duration-150 hidden">
@@ -137,8 +146,8 @@
     </div>
 
     <script>
-        // Quiz Data based on the conversation
-        const quizData = [
+        // Quiz Data updated with 20 questions
+        const baseQuizData = [
             {
                 question: "The default controller can be set from which configuration file:",
                 options: ["Config", "Database", "Routes", "autoload"],
@@ -243,8 +252,7 @@
 
         let questions = [];
         let currentQuestionIndex = 0;
-        let score = 0;
-        const totalQuestions = quizData.length;
+        const totalQuestions = baseQuizData.length;
 
         // Utility function to shuffle an array (Fisher-Yates algorithm)
         function shuffleArray(array) {
@@ -254,17 +262,26 @@
             }
         }
 
+        // Calculates the current score by counting correct answers in the state array
+        function calculateScore() {
+            return questions.filter(q => q.isCorrect === true).length;
+        }
+
         function initializeQuiz() {
-            // 1. Reset state
-            score = 0;
             currentQuestionIndex = 0;
             
-            // 2. Deep copy quizData and shuffle it
-            questions = JSON.parse(JSON.stringify(quizData));
+            // 1. Deep copy quizData and add state properties for tracking answers
+            questions = JSON.parse(JSON.stringify(baseQuizData));
+            
+            // 2. Add state properties and shuffle options
+            questions.forEach(q => {
+                q.userAnswer = null;
+                q.isCorrect = null;
+                shuffleArray(q.options);
+            });
+            
+            // 3. Shuffle questions
             shuffleArray(questions);
-
-            // 3. Shuffle options for each question
-            questions.forEach(q => shuffleArray(q.options));
 
             // 4. Update UI visibility
             document.getElementById('quiz-area').classList.remove('hidden');
@@ -277,8 +294,8 @@
         }
 
         function updateScoreDisplay() {
-            // Updated to show score / totalQuestions (e.g., "5 / 20")
-            document.getElementById('score-tracker').textContent = `Score: ${score} / ${totalQuestions}`;
+            const currentScore = calculateScore();
+            document.getElementById('score-tracker').textContent = `Score: ${currentScore} / ${totalQuestions}`;
         }
 
         function displayQuestion() {
@@ -332,8 +349,9 @@
             
             // Show review feedback if answered
             if (isAnswered) {
+                // UPDATED: Changed incorrect feedback text to show only the correct answer text
                 feedback.innerHTML = `<p class="${currentQ.isCorrect ? 'correct-feedback' : 'incorrect-feedback'}">
-                    ${currentQ.isCorrect ? '✅ You answered this correctly.' : '❌ You answered this incorrectly. The correct answer was: **' + currentQ.answer + '**.'}
+                    ${currentQ.isCorrect ? '✅ You answered this correctly.' : 'Correct answer: ' + currentQ.answer + '.'}
                 </p>`;
             }
 
@@ -358,7 +376,8 @@
                 feedbackElement.innerHTML = `<p class="correct-feedback">✅ Correct! Great job.</p>`;
             } else {
                 selectedButton.classList.add('incorrect');
-                feedbackElement.innerHTML = `<p class="incorrect-feedback">❌ Incorrect. The correct answer was: **${currentQ.answer}**.</p>`;
+                // UPDATED: Changed incorrect feedback message to only show the correct answer text
+                feedbackElement.innerHTML = `<p class="incorrect-feedback">Correct answer: ${currentQ.answer}.</p>`;
             }
 
             // Highlight the correct answer if the selected answer was wrong
@@ -390,7 +409,8 @@
         function showResults() {
             document.getElementById('quiz-area').classList.add('hidden');
             document.getElementById('results-area').classList.remove('hidden');
-            document.getElementById('final-score').textContent = `${score} / ${totalQuestions}`;
+            const finalScore = calculateScore();
+            document.getElementById('final-score').textContent = `${finalScore} / ${totalQuestions}`;
         }
 
         function restartQuiz() {
